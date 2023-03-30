@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 gtk4 = { version = "0.6.0" }
 adw = {package = "libadwaita", version = "0.3"}
+home = { version = "0.5.4" }
+serde = "1.0.158"
+toml = "0.7.3"

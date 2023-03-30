@@ -12,9 +12,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::rc::Rc;
 use adw::prelude::*;
 use gtk4 as gtk;
+use std::rc::Rc;
+use std::{env, fs, io::Read, os::unix::net::UnixStream, path::PathBuf, process::Command, thread};
+use toml;
 
 fn main() {
     run_gui();
@@ -35,6 +37,8 @@ enum ErrorMessages {
     NotANumberError,
     NotAnOperatorError,
     BrackedError,
+    TangentOutOfScope,
+    NegativeLogException,
 }
 
 fn run_gui() {
@@ -66,6 +70,11 @@ fn run_gui() {
         let calc_fact = calc_ref.clone();
         let calc_leftbrace = calc_ref.clone();
         let calc_rightbrace = calc_ref.clone();
+        let calc_sin = calc_ref.clone();
+        let calc_cos = calc_ref.clone();
+        let calc_tan = calc_ref.clone();
+        let calc_log = calc_ref.clone();
+        let calc_exp = calc_ref.clone();
         let calc_enter = calc_ref.clone();
         let calc_delete = calc_ref.clone();
         let calc_clear = calc_ref.clone();
@@ -95,6 +104,11 @@ fn run_gui() {
         let buffer_reffact = input_field_ref.clone();
         let buffer_refleftbrace = input_field_ref.clone();
         let buffer_refrightbrace = input_field_ref.clone();
+        let buffer_refsin = input_field_ref.clone();
+        let buffer_refcos = input_field_ref.clone();
+        let buffer_reftan = input_field_ref.clone();
+        let buffer_reflog = input_field_ref.clone();
+        let buffer_refexp = input_field_ref.clone();
         let buffer_refenter = input_field_ref.clone();
         let buffer_refdelete = input_field_ref.clone();
         let buffer_refclear = input_field_ref.clone();
@@ -124,6 +138,17 @@ fn run_gui() {
         let operator_row4 = gtk::Box::builder().build();
         let utility_row1 = gtk::Box::builder().build();
         let utility_row2 = gtk::Box::builder().build();
+        let result_window = gtk::ScrolledWindow::builder().build();
+        result_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+        result_window.set_vexpand(true);
+        result_window.set_margin_start(5);
+        result_window.set_margin_end(5);
+        result_window.set_margin_top(5);
+        result_window.set_margin_bottom(5);
+        let history = Rc::new(std::cell::RefCell::new(gtk::TextView::builder().build()));
+        let history_instance = history.borrow();
+        history_instance.set_editable(false);
+        let history_ref = history.clone();
         let num_1 = gtk::Button::builder()
             .label("1")
             .margin_top(5)
@@ -252,6 +277,41 @@ fn run_gui() {
             .build();
         let rightbrace = gtk::Button::builder()
             .label(")")
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .build();
+        let sin = gtk::Button::builder()
+            .label("sin")
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .build();
+        let cos = gtk::Button::builder()
+            .label("cos")
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .build();
+        let tan = gtk::Button::builder()
+            .label("tan")
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .build();
+        let log = gtk::Button::builder()
+            .label("log")
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .build();
+        let exp = gtk::Button::builder()
+            .label("^")
             .margin_top(5)
             .margin_bottom(5)
             .margin_start(5)
@@ -412,11 +472,81 @@ fn run_gui() {
             calc.entry += ")";
             input.set_text(calc.entry.as_str());
         });
+        sin.connect_clicked(move |_sin| {
+            let mut calc = calc_sin.borrow_mut();
+            let input = buffer_refsin.borrow_mut();
+            calc.entry = String::from(input.text().clone());
+            calc.entry += "sin";
+            input.set_text(calc.entry.as_str());
+        });
+        cos.connect_clicked(move |_cos| {
+            let mut calc = calc_cos.borrow_mut();
+            let input = buffer_refcos.borrow_mut();
+            calc.entry = String::from(input.text().clone());
+            calc.entry += "cos";
+            input.set_text(calc.entry.as_str());
+        });
+        tan.connect_clicked(move |_tan| {
+            let mut calc = calc_tan.borrow_mut();
+            let input = buffer_reftan.borrow_mut();
+            calc.entry = String::from(input.text().clone());
+            calc.entry += "tan";
+            input.set_text(calc.entry.as_str());
+        });
+        log.connect_clicked(move |_log| {
+            let mut calc = calc_log.borrow_mut();
+            let input = buffer_reflog.borrow_mut();
+            calc.entry = String::from(input.text().clone());
+            calc.entry += "log";
+            input.set_text(calc.entry.as_str());
+        });
+        exp.connect_clicked(move |_exp| {
+            let mut calc = calc_exp.borrow_mut();
+            let input = buffer_refexp.borrow_mut();
+            calc.entry = String::from(input.text().clone());
+            calc.entry += "^";
+            input.set_text(calc.entry.as_str());
+        });
         enter.connect_clicked(move |_enter| {
             let mut calc = calc_enter.borrow_mut();
             let input = buffer_refenter.borrow_mut();
+            let history_borrow = history_ref.borrow_mut();
             calc.entry = String::from(input.text().clone());
-            calc.calculate();
+
+            calc.tokens = split_string(&calc.entry);
+            for token in calc.tokens.iter() {
+                println!("{token}");
+            }
+            calc.next();
+            let maybe_result = calc.handle_expression();
+            match maybe_result {
+                Ok(res) => calc.result = res,
+                Err(error) => {
+                    input.set_text("");
+                    match error {
+                        ErrorMessages::NotANumberError => input.set_placeholder_text(Some(
+                            format!("Expected number at: {}", calc.current).as_str(),
+                        )),
+                        ErrorMessages::NotAnOperatorError => input.set_placeholder_text(Some(
+                            format!("Expected operator at: {}", calc.current).as_str(),
+                        )),
+                        ErrorMessages::BrackedError => input.set_placeholder_text(Some(
+                            format!("Expected bracket at: {}", calc.current).as_str(),
+                        )),
+                        ErrorMessages::ZeroDivisionError => {
+                            input.set_placeholder_text(Some("Division by zero!"))
+                        }
+                        _ => input
+                            .set_placeholder_text(Some(format!("todo: {}", calc.current).as_str())),
+                    };
+                    return;
+                }
+            }
+
+            let result_buffer = gtk::TextBuffer::builder().build();
+            result_buffer.set_text(calc.result.to_string().as_str());
+            history_borrow.set_buffer(Some(&result_buffer));
+
             input.set_text(calc.result.to_string().as_str());
             calc.entry = String::from("");
         });
@@ -432,6 +562,7 @@ fn run_gui() {
             calc.entry = String::from("");
             let input = buffer_refclear.borrow_mut();
             input.set_text("");
+            input.set_placeholder_text(Some("Enter an Expression"))
         });
 
         number_row1.append(&num_1);
@@ -456,6 +587,11 @@ fn run_gui() {
         utility_row1.append(&enter);
         utility_row1.append(&delete);
         utility_row1.append(&clear);
+        utility_row2.append(&sin);
+        utility_row2.append(&cos);
+        utility_row2.append(&tan);
+        utility_row2.append(&log);
+        utility_row2.append(&exp);
         number_box.append(&number_row1);
         number_box.append(&number_row2);
         number_box.append(&number_row3);
@@ -469,9 +605,11 @@ fn run_gui() {
         button_box.append(&number_box);
         button_box.append(&operator_box);
         io_box.append(&*input_field);
+        result_window.set_child(Some(&*history_instance));
         main_box.append(&io_box);
         main_box.append(&utility_box);
         main_box.append(&button_box);
+        main_box.append(&result_window);
 
         let window = adw::ApplicationWindow::builder()
             .application(app)
@@ -503,8 +641,8 @@ impl Calculator {
 
     fn handle_expression(&mut self) -> Result<f64, ErrorMessages> {
         let maybe_result = self.handle_term();
-        if !maybe_result.is_ok() {
-            return Err(ErrorMessages::NotANumberError);
+        if maybe_result.is_err() {
+            return maybe_result;
         }
         let mut result = maybe_result.ok().unwrap();
         if self.expect_number {
@@ -535,8 +673,8 @@ impl Calculator {
 
     fn handle_term(&mut self) -> Result<f64, ErrorMessages> {
         let maybe_result = self.handle_factor();
-        if !maybe_result.is_ok() {
-            return Err(ErrorMessages::NotANumberError);
+        if maybe_result.is_err() {
+            return maybe_result;
         }
         let mut result = maybe_result.ok().unwrap();
         if !self.next_char() {
@@ -563,7 +701,7 @@ impl Calculator {
             }
             '^' => {
                 self.next();
-                self.expect_number = false;
+                self.expect_number = true;
                 let maybe_fact = self.handle_factor();
                 if maybe_fact.is_err() {
                     return maybe_fact;
@@ -653,6 +791,30 @@ impl Calculator {
             }
             self.next();
             self.expect_number = false;
+        } else if is_special(&self.current) {
+            let maybe_result = self.handle_specials();
+            if maybe_result.is_err() {
+                return maybe_result;
+            }
+            self.next();
+            if self.current != ")" {
+                return Err(ErrorMessages::BrackedError);
+            }
+            self.next();
+            self.expect_number = false;
+            return Ok(maybe_result.ok().unwrap());
+        } else if self.current == "-(" {
+            let maybe_result = self.handle_specials();
+            if maybe_result.is_err() {
+                return maybe_result;
+            }
+            self.next();
+            if self.current != ")" {
+                return Err(ErrorMessages::BrackedError);
+            }
+            self.next();
+            self.expect_number = false;
+            return Ok(negate(maybe_result.ok().unwrap()));
         } else {
             if self.current == "" {
                 return Ok(result);
@@ -666,6 +828,89 @@ impl Calculator {
             self.expect_number = false;
         }
         Ok(result)
+    }
+
+    fn handle_specials(&mut self) -> Result<f64, ErrorMessages> {
+        if !self.next_char() {
+            return Err(ErrorMessages::NotAnOperatorError);
+        }
+        if self.next_char == '-' {
+            self.current.remove(0);
+            let maybe_result = self.handle_specials();
+            if maybe_result.is_err() {
+                return maybe_result;
+            }
+            return Ok(negate(maybe_result.ok().unwrap()));
+        }
+        match self.current.as_str() {
+            "cos" => {
+                self.next();
+                if self.current != "(" {
+                    return Err(ErrorMessages::BrackedError);
+                }
+                self.next();
+                let maybe_number = self.current.parse::<f64>();
+                if maybe_number.is_err() {
+                    return Err(ErrorMessages::NotANumberError);
+                }
+                return Ok((maybe_number.ok().unwrap() * (std::f64::consts::PI / 180.0)).cos());
+            }
+            "sin" => {
+                self.next();
+                if self.current != "(" {
+                    return Err(ErrorMessages::BrackedError);
+                }
+                self.next();
+                let maybe_number = self.current.parse::<f64>();
+                if maybe_number.is_err() {
+                    return Err(ErrorMessages::NotANumberError);
+                }
+                return Ok((maybe_number.ok().unwrap() * (std::f64::consts::PI / 180.0)).sin());
+            }
+            "tan" => {
+                self.next();
+                if self.current != "(" {
+                    return Err(ErrorMessages::BrackedError);
+                }
+                self.next();
+                let maybe_number = self.current.parse::<f64>();
+                if maybe_number.is_err() {
+                    return Err(ErrorMessages::NotANumberError);
+                }
+                let tannum = maybe_number.clone().ok().unwrap();
+                if tannum / 90.0 % 2.0 == 1.0 || tannum / 90.0 % 2.0 == -1.0 {
+                    return Err(ErrorMessages::TangentOutOfScope);
+                }
+                return Ok((maybe_number.ok().unwrap() * std::f64::consts::PI / 180.0).tan());
+            }
+            _ => {
+                let mut logbase = std::f64::consts::E;
+                self.next();
+                let maybe_base = self.current.parse::<f64>();
+                if maybe_base.is_ok() && !is_negative(maybe_base.clone().ok().unwrap()) {
+                    logbase = maybe_base.ok().unwrap();
+                    self.next();
+                    if self.current != "(" {
+                        return Err(ErrorMessages::BrackedError);
+                    }
+                    self.next();
+                } else {
+                    if self.current != "(" {
+                        return Err(ErrorMessages::BrackedError);
+                    }
+                    self.next();
+                }
+                let maybe_number = self.current.parse::<f64>();
+                if maybe_number.is_err() {
+                    return Err(ErrorMessages::NotANumberError);
+                }
+                let num = maybe_number.ok().unwrap();
+                if is_negative(num) {
+                    return Err(ErrorMessages::NegativeLogException);
+                }
+                return Ok(num.log(logbase));
+            }
+        }
     }
 
     fn next(&mut self) {
@@ -690,26 +935,6 @@ impl Calculator {
             return true;
         }
         return false;
-    }
-
-    fn calculate(&mut self) {
-        self.tokens = split_string(&self.entry);
-        for token in self.tokens.iter() {
-            println!("{token}");
-        }
-        self.next();
-        let maybe_result = self.handle_expression();
-        match maybe_result {
-            Ok(res) => self.result = res,
-            Err(error) => match error {
-                ErrorMessages::NotANumberError => println!("Expected number at: {}", self.current),
-                ErrorMessages::NotAnOperatorError => {
-                    println!("Expected operator at: {}", self.current)
-                }
-                ErrorMessages::BrackedError => println!("Expected bracket at {}", self.current),
-                ErrorMessages::ZeroDivisionError => println!("Division by zero at!"),
-            },
-        }
     }
 }
 
@@ -800,6 +1025,17 @@ fn split_string(str: &String) -> Vec<String> {
     tokens
 }
 
+fn negate(num: f64) -> f64 {
+    return -num;
+}
+
+fn is_negative(num: f64) -> bool {
+    if num < 0.0 {
+        return true;
+    }
+    false
+}
+
 fn is_operator(chr: char) -> bool {
     match chr {
         '+' => true,
@@ -810,6 +1046,16 @@ fn is_operator(chr: char) -> bool {
         '^' => true,
         '(' => true,
         ')' => true,
+        _ => false,
+    }
+}
+
+fn is_special(str: &String) -> bool {
+    match str.as_str() {
+        "sin" => true,
+        "cos" => true,
+        "tan" => true,
+        "log" => true,
         _ => false,
     }
 }
@@ -829,10 +1075,16 @@ fn factorial(num: i64) -> Result<f64, ErrorMessages> {
 }
 
 fn exponential(base: f64, power: f64) -> Result<f64, ErrorMessages> {
-    if power > 0.0 {
-        return exponential(base, power - 1.0);
-    } else if power < 0.0 {
-        return exponential(base, power + 1.0);
+    if (power as i64) > 0 {
+        match exponential(base, power - 1.0) {
+            Ok(res) => Ok(base * res),
+            Err(err) => Err(err),
+        }
+    } else if (power as i64) < 0 {
+        match exponential(base, power + 1.0) {
+            Ok(res) => Ok(base * res),
+            Err(err) => Err(err),
+        }
     } else {
         return Ok(1.0);
     }
