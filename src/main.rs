@@ -175,6 +175,7 @@ fn run_gui() {
             .orientation(gtk::Orientation::Vertical)
             .build();
 
+        let labels = std::cell::RefCell::new(Vec::<gtk::Label>::new());
         let listbox = Rc::new(std::cell::RefCell::new(gtk::ListBox::new()));
         let list_box_ref = listbox.borrow();
         let list_box_ref_mut = listbox.clone();
@@ -689,6 +690,9 @@ fn run_gui() {
         variable_menu.connect_show(move |_| {
             let calc = calc_tree.borrow_mut();
             let list_box = list_box_ref_mut.borrow_mut();
+                while let Some(label) = list_box.first_child() {
+                    list_box.remove(&label);
+                }
 
             for (var, val) in calc.variables.iter() {
                 let label = gtk::Label::builder()
