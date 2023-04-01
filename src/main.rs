@@ -41,7 +41,8 @@ enum ErrorMessages {
     NotAnOperatorError,
     BrackedError,
     TangentOutOfScope,
-    NegativeLogException,
+    NegativeLogError,
+    NegativeFactorialError,
 }
 
 fn run_gui() {
@@ -690,9 +691,9 @@ fn run_gui() {
         variable_menu.connect_show(move |_| {
             let calc = calc_tree.borrow_mut();
             let list_box = list_box_ref_mut.borrow_mut();
-                while let Some(label) = list_box.first_child() {
-                    list_box.remove(&label);
-                }
+            while let Some(label) = list_box.first_child() {
+                list_box.remove(&label);
+            }
 
             for (var, val) in calc.variables.iter() {
                 let label = gtk::Label::builder()
@@ -1014,11 +1015,11 @@ impl Calculator {
             self.expect_number = false;
             return Ok(maybe_result.ok().unwrap());
         } else if self.current == "-(" {
-            let maybe_result = self.handle_specials();
+            self.next();
+            let maybe_result = self.handle_expression();
             if maybe_result.is_err() {
                 return maybe_result;
             }
-            self.next();
             if self.current != ")" {
                 return Err(ErrorMessages::BrackedError);
             }
@@ -1116,7 +1117,7 @@ impl Calculator {
                 }
                 let num = maybe_number.ok().unwrap();
                 if is_negative(num) {
-                    return Err(ErrorMessages::NegativeLogException);
+                    return Err(ErrorMessages::NegativeLogError);
                 }
                 return Ok(num.log(logbase));
             }
@@ -1221,7 +1222,7 @@ fn split_string(str: &String) -> Vec<String> {
             tokens.push(buffer.clone());
             buffer.clear();
         }
-        if is_operator(chr) {
+        if is_operator(chr) || chr == '!' {
             if op_current && chr == '-' {
                 // handle infinite - cases
                 op_lock = false;
@@ -1318,7 +1319,7 @@ fn factorial(num: i64) -> Result<f64, ErrorMessages> {
         return Ok((num * maybe_fact.ok().unwrap() as i64) as f64);
     }
     if num < 0 {
-        return Err(ErrorMessages::NotANumberError);
+        return Err(ErrorMessages::NegativeFactorialError);
     }
     Ok(1.0)
 }
