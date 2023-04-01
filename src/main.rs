@@ -188,7 +188,6 @@ fn run_gui() {
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let labels = std::cell::RefCell::new(Vec::<gtk::Label>::new());
         let listbox = Rc::new(std::cell::RefCell::new(gtk::ListBox::new()));
         let list_box_ref = listbox.borrow();
         let list_box_ref_mut = listbox.clone();
