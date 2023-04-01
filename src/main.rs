@@ -18,6 +18,7 @@ use gtk4 as gtk;
 use std::collections::HashMap;
 use std::{fs, rc::Rc};
 use toml;
+use xdg;
 
 fn main() {
     run_gui();
@@ -55,7 +56,18 @@ fn run_gui() {
         adw::init().unwrap();
     });
     app.connect_activate(move |app| {
-        calc_ref.borrow_mut().toml_path = String::from("/home/dashie/.config/calc/variables.toml");
+        let xdg_dirs =
+            xdg::BaseDirectories::with_prefix("calc").expect("Could not get xdg directories");
+        let xdg_file = xdg_dirs.find_data_file("variables.toml");
+        let xdg_path;
+        if xdg_file.is_none() {
+            xdg_path = xdg_dirs
+                .place_config_file("variables.toml")
+                .expect("cannot create configuration directory");
+        } else {
+            xdg_path = xdg_file.unwrap();
+        }
+        calc_ref.borrow_mut().toml_path = String::from(xdg_path.to_str().unwrap());
         calc_ref.borrow_mut().read_toml();
         let calc1 = calc_ref.clone();
         let calc2 = calc_ref.clone();
@@ -1151,7 +1163,7 @@ impl Calculator {
     fn read_toml(&mut self) {
         let content = match fs::read_to_string(&self.toml_path) {
             Ok(c) => c,
-            Err(_) => panic!("Could not open variable.toml"),
+            Err(_) => panic!("Could not open variables.toml"),
         };
         self.variables = match toml::from_str(&content) {
             Ok(c) => c,
