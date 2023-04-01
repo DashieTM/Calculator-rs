@@ -15,8 +15,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 use adw::prelude::*;
 use glib::clone;
 use gtk4 as gtk;
-use std::rc::Rc;
-use std::{env, fs, io::Read, os::unix::net::UnixStream, path::PathBuf, process::Command, thread};
+use std::collections::HashMap;
+use std::{fs, rc::Rc};
 use toml;
 
 fn main() {
@@ -31,6 +31,8 @@ struct Calculator {
     current: String,
     tokens: Vec<String>,
     next_char: char,
+    variables: HashMap<String, f64>,
+    toml_path: String,
 }
 
 enum ErrorMessages {
@@ -52,6 +54,8 @@ fn run_gui() {
         adw::init().unwrap();
     });
     app.connect_activate(move |app| {
+        calc_ref.borrow_mut().toml_path = String::from("/home/dashie/.config/calc/variables.toml");
+        calc_ref.borrow_mut().read_toml();
         let calc1 = calc_ref.clone();
         let calc2 = calc_ref.clone();
         let calc3 = calc_ref.clone();
@@ -79,6 +83,8 @@ fn run_gui() {
         let calc_enter = calc_ref.clone();
         let calc_delete = calc_ref.clone();
         let calc_clear = calc_ref.clone();
+        let calc_vars = calc_ref.clone();
+        let calc_tree = calc_ref.clone();
         // let buffer = Rc::new(std::cell::RefCell::new(&input_text));
         let input_field_ref = Rc::new(std::cell::RefCell::new(
             gtk::Entry::builder()
@@ -165,9 +171,14 @@ fn run_gui() {
         let result_buffer = gtk::TextBuffer::builder().build();
         let history_ref = history.clone();
         let variable_menu = gtk::PopoverMenu::builder().build();
-        let variable_box = gtk::Box::builder().build();
-        let variable_tree = Rc::new(std::cell::RefCell::new(gtk::TreeView::builder().build()));
-        let variable_tree_ref = variable_tree.borrow();
+        let variable_box = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+        let listbox = Rc::new(std::cell::RefCell::new(gtk::ListBox::new()));
+        let list_box_ref = listbox.borrow();
+        let list_box_ref_mut = listbox.clone();
+
         let variable_input = Rc::new(std::cell::RefCell::new(
             gtk::Entry::builder()
                 .placeholder_text("Enter a variable command")
@@ -439,12 +450,16 @@ fn run_gui() {
             let input = buffer_refenter.borrow_mut();
             let history_borrow = history_ref.borrow_mut();
             let mut history_buffer_ref = history_buffer.borrow_mut();
+
             calc.entry = String::from(input.text().clone());
 
-            calc.tokens = split_string(&calc.entry);
-            for token in calc.tokens.iter() {
-                println!("{token}");
+            if calc.entry == "" {
+                return;
             }
+
+            calc.tokens = split_string(&calc.entry);
+            negative_clean(&mut calc.tokens);
+            calc.parse_tokens();
             calc.next();
             let maybe_result = calc.handle_expression();
             match maybe_result {
@@ -481,7 +496,8 @@ fn run_gui() {
             calc.entry = String::from("");
             calc.result = 0.0;
         }));
-        let enter_closure_wrapper = clone!(@strong enter_closure => move || enter_closure.borrow_mut()());
+        let enter_closure_wrapper =
+            clone!(@strong enter_closure => move || enter_closure.borrow_mut()());
         num_1.connect_clicked(move |_num_1| {
             let mut calc = calc1.borrow_mut();
             let input = buffer_ref1.borrow_mut();
@@ -650,7 +666,9 @@ fn run_gui() {
             calc.entry += "^";
             input.set_text(calc.entry.as_str());
         });
-        enter.connect_clicked(clone!(@strong enter_closure_wrapper => move |_| enter_closure_wrapper()));
+        enter.connect_clicked(
+            clone!(@strong enter_closure_wrapper => move |_| enter_closure_wrapper()),
+        );
         delete.connect_clicked(move |_delete| {
             let mut calc = calc_delete.borrow_mut();
             let input = buffer_refdelete.borrow_mut();
@@ -665,11 +683,85 @@ fn run_gui() {
             input.set_text("");
             input.set_placeholder_text(Some("Enter an Expression"))
         });
-        input_field.connect_activate(clone!(@strong enter_closure_wrapper => move |_| enter_closure_wrapper()));
-        variable_menu.connect_activate_default(move |_variable_menu| {
-            // let variable_menu_ref = variable_menu.borrow_mut();
-            // variable_menu_ref.show();
+        input_field.connect_activate(
+            clone!(@strong enter_closure_wrapper => move |_| enter_closure_wrapper()),
+        );
+        variable_menu.connect_show(move |_| {
+            let calc = calc_tree.borrow_mut();
+            let list_box = list_box_ref_mut.borrow_mut();
+
+            for (var, val) in calc.variables.iter() {
+                let label = gtk::Label::builder()
+                    .label(&format!("{} = {}", var, val))
+                    .build();
+                list_box.append(&label);
+            }
         });
+        variable_input
+            .borrow()
+            .connect_activate(move |variable_input| {
+                let mut calc = calc_vars.borrow_mut();
+                let command = variable_input.text();
+                let mut tokens = command.split(" ");
+                match tokens.next().unwrap() {
+                    "add" => {
+                        let key = tokens.next();
+                        if key.is_none() {
+                            variable_input.set_placeholder_text(Some("Could not parse command"));
+                            variable_input.set_text("");
+                        }
+                        let val = tokens.next();
+                        if val.is_none() {
+                            variable_input.set_placeholder_text(Some("Could not parse command"));
+                            variable_input.set_text("");
+                        }
+                        let val_parse = String::from(val.unwrap()).parse::<f64>();
+                        if val_parse.is_err() {
+                            variable_input.set_placeholder_text(Some("Could not parse variable"));
+                            variable_input.set_text("");
+                            return;
+                        }
+                        let end_var = val_parse.ok().unwrap();
+                        let end_key = key.unwrap();
+
+                        calc.variables.insert(String::from(end_key), end_var);
+                        variable_input.set_placeholder_text(Some(
+                            format!("Added variable {} with value {}", end_key, end_var).as_str(),
+                        ));
+                        variable_input.set_text("");
+                        calc.write_toml();
+                    }
+                    "delete" => {
+                        let key = tokens.next();
+                        if key.is_none() {
+                            variable_input
+                                .set_placeholder_text(Some("Please enter variable to delete"));
+                            variable_input.set_text("");
+                        }
+                        let key_end = key.unwrap();
+                        let mut should_delete = false;
+                        for (calc_key, _) in calc.variables.iter() {
+                            if *calc_key == key_end {
+                                should_delete = true;
+                            }
+                        }
+                        if !should_delete {
+                            variable_input.set_placeholder_text(Some("Variable not found!"));
+                            variable_input.set_text("");
+                        }
+                        calc.variables.remove(key_end).unwrap();
+                        variable_input.set_placeholder_text(Some(
+                            format!("Deleted variable {}", key_end).as_str(),
+                        ));
+                        variable_input.set_text("");
+                        calc.write_toml();
+                    }
+                    _ => {
+                        variable_input.set_text("");
+                        variable_input.set_placeholder_text(Some("Could not parse command"));
+                    }
+                }
+            });
         number_row1.append(&num_1);
         number_row1.append(&num_2);
         number_row1.append(&num_3);
@@ -719,7 +811,7 @@ fn run_gui() {
 
         variable_menu.set_child(Some(&variable_box));
         variable_box.append(&*variable_input_ref);
-        variable_box.append(&*variable_tree_ref);
+        variable_box.append(&*list_box_ref);
 
         let window = adw::ApplicationWindow::builder()
             .application(app)
@@ -748,6 +840,8 @@ impl Calculator {
             current: String::from(""),
             tokens: Vec::new(),
             next_char: '_',
+            variables: Default::default(),
+            toml_path: String::from(""),
         }
     }
 
@@ -1048,6 +1142,42 @@ impl Calculator {
         }
         return false;
     }
+
+    fn read_toml(&mut self) {
+        let content = match fs::read_to_string(&self.toml_path) {
+            Ok(c) => c,
+            Err(_) => panic!("Could not open variable.toml"),
+        };
+        self.variables = match toml::from_str(&content) {
+            Ok(c) => c,
+            Err(err) => panic!("error converting toml: {}", err),
+        };
+    }
+
+    fn write_toml(&self) {
+        let toml_string =
+            toml::to_string(&self.variables).expect("Error parsing variables to toml");
+        println!("{}", toml_string);
+        fs::write(&self.toml_path, toml_string).expect("Could not write to toml");
+    }
+
+    fn parse_tokens(&mut self) {
+        for token in self.tokens.iter_mut() {
+            for (key, var) in self.variables.iter() {
+                let mut neg = false;
+                if token.starts_with('-') {
+                    neg = true;
+                    token.remove(0);
+                }
+                if *token == *key {
+                    *token = var.to_string();
+                }
+                if neg {
+                    token.insert(0, '-');
+                }
+            }
+        }
+    }
 }
 
 fn split_string(str: &String) -> Vec<String> {
@@ -1118,6 +1248,10 @@ fn split_string(str: &String) -> Vec<String> {
     if buffer != "" {
         tokens.push(buffer.clone());
     }
+    tokens
+}
+
+fn negative_clean(tokens: &mut Vec<String>) {
     let mut min_lock = false;
     for token in tokens.iter_mut() {
         if token.len() > 1 {
@@ -1134,7 +1268,6 @@ fn split_string(str: &String) -> Vec<String> {
             min_lock = false;
         }
     }
-    tokens
 }
 
 fn negate(num: f64) -> f64 {
