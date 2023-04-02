@@ -20,12 +20,14 @@ use std::collections::HashMap;
 use std::{fs, rc::Rc};
 use toml;
 
+mod tests;
+
 fn main() {
     run_gui();
 }
 
 #[derive(Clone)]
-struct Calculator {
+pub struct Calculator {
     entry: String,
     result: f64,
     expect_number: bool,
@@ -851,11 +853,7 @@ fn run_gui() {
 }
 
 impl Calculator {
-    // then we implement the trait that brings the drawing functionality from iced to our struct
-    // type Message = CalculatorMessage;
-
     fn new() -> Self {
-        // initializes the state of your application
         Calculator {
             entry: String::from(""),
             result: 0.0,
@@ -886,13 +884,11 @@ impl Calculator {
                     self.next();
                     self.expect_number = true;
                     result += self.handle_term().ok().unwrap();
-                    return Ok(result);
                 }
                 '-' => {
                     self.next();
                     self.expect_number = true;
                     result -= self.handle_term().ok().unwrap();
-                    return Ok(result);
                 }
                 _ => return Err(ErrorMessages::NotAnOperatorError),
             }
@@ -1010,7 +1006,6 @@ impl Calculator {
     }
 
     fn handle_factor(&mut self) -> Result<f64, ErrorMessages> {
-        // let mut result: f64 = self.handle_term().ok().unwrap();
         let mut result = 0.0;
         if self.current == "(" {
             self.next();
@@ -1023,7 +1018,7 @@ impl Calculator {
             }
             self.next();
             self.expect_number = false;
-            return Ok(negate(maybe_result.ok().unwrap()));
+            return Ok(maybe_result.ok().unwrap());
         } else if is_special(&self.current) {
             let maybe_result = self.handle_specials();
             if maybe_result.is_err() {
