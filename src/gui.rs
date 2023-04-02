@@ -117,6 +117,7 @@ pub fn run_gui() {
         let buffer_refdelete = input_field_ref.clone();
         let buffer_refclear = input_field_ref.clone();
         let history_buffer = Box::new(std::cell::RefCell::new(String::from("")));
+        let title_bar = adw::HeaderBar::builder().build();
         let main_box = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -800,6 +801,7 @@ pub fn run_gui() {
         button_box.append(&operator_box);
         io_box.append(&*input_field);
         result_window.set_child(Some(&*history_instance));
+        main_box.append(&title_bar);
         main_box.append(&io_box);
         main_box.append(&utility_box);
         main_box.append(&button_box);
@@ -811,10 +813,10 @@ pub fn run_gui() {
 
         let window = adw::ApplicationWindow::builder()
             .application(app)
-            .title("My GTK App")
+            .title("OxiCalc")
             .content(&main_box)
             .default_width(300)
-            .default_height(400)
+            .default_height(450)
             .build();
 
         // Present window
