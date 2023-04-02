@@ -63,7 +63,8 @@ fn run_gui() {
         if xdg_file.is_none() {
             xdg_path = xdg_dirs
                 .place_config_file("variables.toml")
-                .expect("cannot create configuration directory");
+                .expect("Could not get new config path");
+            fs::File::create(&xdg_path).expect("Could not write config file");
         } else {
             xdg_path = xdg_file.unwrap();
         }
