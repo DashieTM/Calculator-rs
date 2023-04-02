@@ -36,6 +36,7 @@ mod tests {
         let mut calculator = Calculator::new();
         test_calculation(20.0, "(5 + 5)*2", &mut calculator);
         test_calculation(15.0, "5 + 5 * 2", &mut calculator);
+        test_calculation(26.0, "1+1*5^2", &mut calculator);
     }
     #[test]
     fn calculation_negative_cleaned() {
@@ -47,6 +48,11 @@ mod tests {
     fn calculation_specials() {
         let mut calculator = Calculator::new();
         test_calculation(1.0, "log_5(5)", &mut calculator);
+    }
+    #[test]
+    fn calculation_exponential() {
+        let mut calculator = Calculator::new();
+        test_calculation(25.0, "5^2", &mut calculator);
     }
 
     // function for the actual test
