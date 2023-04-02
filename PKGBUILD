@@ -8,11 +8,10 @@ pkgdir="/usr/bin/${pkgname}"
 pkgdesc="A Calculator written with rust and gtk4"
 depends=('rust' 'gtk4')
 build() {
-  cargo build --release
+	cargo build --release
 }
 
 package() {
-  cd ..
-  cp target/release/hyprcalc /usr/bin/.
+	cd ..
+	install -Dm755 target/release/hyprcalc "$pkgdir"/usr/bin/hyprcalc
 }
-

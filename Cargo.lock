@@ -46,21 +46,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "calculator"
-version = "0.1.0"
-dependencies = [
- "gio",
- "glib",
- "gtk4",
- "home",
- "libadwaita",
- "serde",
- "serde_derive",
- "toml 0.7.3",
- "xdg",
-]
-
-[[package]]
 name = "cfg-expr"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -461,6 +446,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "747309b4b440c06d57b0b25f2aee03ee9b5e5397d288c60e21fc709bb98a7408"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "hyprcalc"
+version = "0.1.0"
+dependencies = [
+ "gio",
+ "glib",
+ "gtk4",
+ "home",
+ "libadwaita",
+ "serde",
+ "serde_derive",
+ "toml 0.7.3",
+ "xdg",
 ]
 
 [[package]]

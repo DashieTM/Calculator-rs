@@ -1007,12 +1007,16 @@ impl Calculator {
         let mut result = 0.0;
         if self.current == "(" {
             self.next();
-            result = self.handle_expression().ok().unwrap();
+            let maybe_result = self.handle_expression();
+            if maybe_result.is_err() {
+                return maybe_result;
+            }
             if self.current != ")" {
                 return Err(ErrorMessages::BrackedError);
             }
             self.next();
             self.expect_number = false;
+            return Ok(negate(maybe_result.ok().unwrap()));
         } else if is_special(&self.current) {
             let maybe_result = self.handle_specials();
             if maybe_result.is_err() {
