@@ -12,12 +12,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+use crate::calculator::*;
 use adw::prelude::*;
 use directories_next as dirs;
 use glib::clone;
 use gtk4 as gtk;
 use std::{fs, rc::Rc};
-use crate::calculator::*;
 
 pub fn run_gui() {
     let calc_ref = Rc::new(std::cell::RefCell::new(Calculator::new()));
@@ -822,4 +822,3 @@ pub fn run_gui() {
     });
     app.run();
 }
-
