@@ -13,12 +13,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 use adw::prelude::*;
+use directories_next as dirs;
 use glib::clone;
 use gtk4 as gtk;
 use std::collections::HashMap;
 use std::{fs, rc::Rc};
 use toml;
-use xdg;
 
 fn main() {
     run_gui();
@@ -56,19 +56,25 @@ fn run_gui() {
         adw::init().unwrap();
     });
     app.connect_activate(move |app| {
-        let xdg_dirs =
-            xdg::BaseDirectories::with_prefix("calc").expect("Could not get xdg directories");
-        let xdg_file = xdg_dirs.find_data_file("variables.toml");
-        let xdg_path;
-        if xdg_file.is_none() {
-            xdg_path = xdg_dirs
-                .place_config_file("variables.toml")
-                .expect("Could not get new config path");
-            fs::File::create(&xdg_path).expect("Could not write config file");
-        } else {
-            xdg_path = xdg_file.unwrap();
+        let maybe_config_dir = dirs::ProjectDirs::from("com", "dashie", "calc");
+        if maybe_config_dir.is_none() {
+            panic!("Could not get config directory");
         }
-        calc_ref.borrow_mut().toml_path = String::from(xdg_path.to_str().unwrap());
+        // Lin: /home/alice/.config/barapp
+        // Win: C:\Users\Alice\AppData\Roaming\Foo Corp\Bar App\config
+        // Mac: /Users/Alice/Library/Application Support/com.Foo-Corp.Bar-App
+        let config = maybe_config_dir.unwrap();
+        let config_dir = config.config_dir();
+        let metadata = fs::metadata(config_dir);
+        if metadata.is_err() {
+            panic!("Could not access config dir to check for file");
+        }
+        let file_path = config_dir.join("variables.toml");
+        let file = metadata.unwrap();
+        if !file.is_file() {
+            fs::File::create(&file_path).expect("Could not write config file");
+        }
+        calc_ref.borrow_mut().toml_path = String::from(file_path.to_str().unwrap());
         calc_ref.borrow_mut().read_toml();
         let calc1 = calc_ref.clone();
         let calc2 = calc_ref.clone();
