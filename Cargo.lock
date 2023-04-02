@@ -441,17 +441,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
-name = "hyprcalc"
-version = "1.0.0"
-dependencies = [
- "directories-next",
- "glib",
- "gtk4",
- "libadwaita",
- "toml 0.7.3",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -522,6 +511,17 @@ name = "once_cell"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
+
+[[package]]
+name = "oxicalc"
+version = "0.1.0"
+dependencies = [
+ "directories-next",
+ "glib",
+ "gtk4",
+ "libadwaita",
+ "toml 0.7.3",
+]
 
 [[package]]
 name = "pango"
