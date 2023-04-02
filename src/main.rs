@@ -60,14 +60,14 @@ fn run_gui() {
         if maybe_config_dir.is_none() {
             panic!("Could not get config directory");
         }
-        // Lin: /home/alice/.config/barapp
-        // Win: C:\Users\Alice\AppData\Roaming\Foo Corp\Bar App\config
-        // Mac: /Users/Alice/Library/Application Support/com.Foo-Corp.Bar-App
         let config = maybe_config_dir.unwrap();
         let config_dir = config.config_dir();
+        if !config_dir.exists() {
+            fs::create_dir(config_dir).expect("Could not create config directory");
+        }
         let metadata = fs::metadata(config_dir);
         if metadata.is_err() {
-            panic!("Could not access config dir to check for file");
+            panic!("Could not check directory metadata for config file");
         }
         let file_path = config_dir.join("variables.toml");
         let file = metadata.unwrap();
