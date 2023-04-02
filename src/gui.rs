@@ -22,7 +22,7 @@ use std::{fs, rc::Rc};
 pub fn run_gui() {
     let calc_ref = Rc::new(std::cell::RefCell::new(Calculator::new()));
     let app = adw::Application::builder()
-        .application_id("org.dashie.Calculator")
+        .application_id("org.dashie.OxiCalc")
         .build();
 
     app.connect_startup(|_| {
