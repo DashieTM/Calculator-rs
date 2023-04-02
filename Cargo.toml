@@ -1,6 +1,11 @@
 [package]
 name = "hyprcalc"
-version = "0.1.0"
+version = "1.0.0"
+authors = ["dashie <fabio.lenherr@gmail.com>"]
+description = "A small, simple calculator written in rust/gtk4"
+license = "GPL-3.0-only"
+license-file = "LICENSE"
+repository = "https://github.com/DashieTM/Calculator-rs"
 edition = "2021"
 
 [dependencies]
