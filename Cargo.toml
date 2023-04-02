@@ -11,6 +11,6 @@ edition = "2021"
 gtk4 = { version = "0.6.0" }
 adw = {package = "libadwaita", version = "0.3"}
 toml = "0.7.3"
-glib = "*"
-directories-next = "*"
+glib = "0.17.5"
+directories-next = "2.0.0"
 
