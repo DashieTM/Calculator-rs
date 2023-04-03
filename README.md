@@ -5,6 +5,10 @@ This is a rewrite of a previous calculator -> [calculator with gtk4 and c++](htt
 
 This calculator might still have some bugs, feel free to open an issue, so I can go fix it : P
 
+## Installation
+- [crates.io](https://crates.io/crates/oxicalc)
+- [aur](https://aur.archlinux.org/packages/oxicalc)
+
 ## Screenshot
 ![Screenshot of Calculator](Screenshot.png?raw=true)
 
