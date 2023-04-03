@@ -43,8 +43,7 @@ pub fn run_gui() {
             panic!("Could not check directory metadata for config file");
         }
         let file_path = config_dir.join("variables.toml");
-        let file = metadata.unwrap();
-        if !file.is_file() {
+        if !file_path.exists() {
             fs::File::create(&file_path).expect("Could not write config file");
         }
         calc_ref.borrow_mut().toml_path = String::from(file_path.to_str().unwrap());

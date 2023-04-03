@@ -364,7 +364,6 @@ impl Calculator {
     pub fn write_toml(&self) {
         let toml_string =
             toml::to_string(&self.variables).expect("Error parsing variables to toml");
-        println!("{}", toml_string);
         fs::write(&self.toml_path, toml_string).expect("Could not write to toml");
     }
 
