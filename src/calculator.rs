@@ -166,7 +166,7 @@ impl Calculator {
             '/' => {
                 self.next();
                 self.expect_number = true;
-                let maybe_div = self.handle_term();
+                let maybe_div = self.handle_factor();
                 if !maybe_div.is_ok() {
                     return Err(ErrorMessages::NotANumberError);
                 }
@@ -178,7 +178,7 @@ impl Calculator {
                 if !self.next_char() {
                     return Ok(result);
                 }
-                if is_operator(self.current.chars().next().unwrap()) {
+                if is_operator(self.next_char) {
                     self.tokens.insert(0, self.current.clone());
                     self.current = result.to_string();
                     result = self.handle_term().ok().unwrap();
