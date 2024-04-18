@@ -8,9 +8,9 @@ repository = "https://github.com/DashieTM/oxicalc"
 edition = "2021"
 
 [dependencies]
-gtk4 = { version = "0.6.0" }
-adw = {package = "libadwaita", version = "0.3"}
-toml = "0.7.3"
-glib = "0.17.5"
+gtk4 = { version = "0.8.1" }
+adw = {package = "libadwaita", version = "0.6"}
+toml = "0.8.12"
+glib = "0.19.4"
 directories-next = "2.0.0"
 

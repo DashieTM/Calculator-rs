@@ -53,14 +53,11 @@ impl Calculator {
 
     pub fn handle_expression(&mut self) -> Result<f64, ErrorMessages> {
         let maybe_result = self.handle_term();
-        if maybe_result.is_err() {
-            return maybe_result;
-        }
-        let mut result = maybe_result.ok().unwrap();
+        let mut result = maybe_result?;
         if self.expect_number {
             return Ok(result);
         }
-        while self.current != "" && self.current != ")" {
+        while !self.current.is_empty() && self.current != ")" {
             if !self.next_char() {
                 return Ok(result);
             }
@@ -83,10 +80,7 @@ impl Calculator {
 
     pub fn handle_term(&mut self) -> Result<f64, ErrorMessages> {
         let maybe_result = self.handle_factor();
-        if maybe_result.is_err() {
-            return maybe_result;
-        }
-        let mut result = maybe_result.ok().unwrap();
+        let mut result = maybe_result?;
         if !self.next_char() {
             return Ok(result);
         }
@@ -95,10 +89,7 @@ impl Calculator {
                 self.next();
                 self.expect_number = false;
                 let maybe_result = factorial(result as i64);
-                if maybe_result.is_err() {
-                    return maybe_result;
-                }
-                result = maybe_result.ok().unwrap();
+                result = maybe_result?;
                 if !self.next_char() {
                     return Ok(result);
                 }
@@ -107,20 +98,14 @@ impl Calculator {
                     self.current = result.to_string();
                     return self.handle_term();
                 }
-                return Ok(result);
+                Ok(result)
             }
             '^' => {
                 self.next();
                 self.expect_number = true;
                 let maybe_fact = self.handle_factor();
-                if maybe_fact.is_err() {
-                    return maybe_fact;
-                }
-                let maybe_expt = exponential(result, maybe_fact.ok().unwrap());
-                if maybe_expt.is_err() {
-                    return maybe_expt;
-                }
-                result = maybe_expt.ok().unwrap();
+                let maybe_expt = exponential(result, maybe_fact?);
+                result = maybe_expt?;
                 if !self.next_char() {
                     return Ok(result);
                 }
@@ -129,16 +114,13 @@ impl Calculator {
                     self.current = result.to_string();
                     return self.handle_term();
                 }
-                return Ok(result);
+                Ok(result)
             }
             '%' => {
                 self.next();
                 self.expect_number = true;
                 let maybe_div = self.handle_factor();
-                if maybe_div.is_err() {
-                    return maybe_div;
-                }
-                let div = maybe_div.ok().unwrap();
+                let div = maybe_div?;
                 if div == 0.0 {
                     return Err(ErrorMessages::ZeroDivisionError);
                 }
@@ -151,23 +133,23 @@ impl Calculator {
                     self.current = result.to_string();
                     return self.handle_term();
                 }
-                return Ok(result);
+                Ok(result)
             }
             '*' => {
                 self.next();
                 self.expect_number = true;
                 let maybe_mul = self.handle_term();
-                if !maybe_mul.is_ok() {
+                if maybe_mul.is_err() {
                     return Err(ErrorMessages::NotANumberError);
                 }
                 result *= maybe_mul.ok().unwrap();
-                return Ok(result);
+                Ok(result)
             }
             '/' => {
                 self.next();
                 self.expect_number = true;
                 let maybe_div = self.handle_factor();
-                if !maybe_div.is_ok() {
+                if maybe_div.is_err() {
                     return Err(ErrorMessages::NotANumberError);
                 }
                 let div = maybe_div.ok().unwrap();
@@ -184,7 +166,7 @@ impl Calculator {
                     result = self.handle_term().ok().unwrap();
                     return Ok(result);
                 }
-                return Ok(result);
+                Ok(result)
             }
             _ => Ok(result),
         }

@@ -446,7 +446,7 @@ pub fn run_gui() {
 
             calc.entry = String::from(input.text().clone());
 
-            if calc.entry == "" {
+            if calc.entry.is_empty() {
                 return;
             }
 
@@ -481,7 +481,7 @@ pub fn run_gui() {
             *history_buffer_ref +=
                 &(calc.entry.clone() + " = " + calc.result.to_string().as_str() + "\n");
 
-            result_buffer.set_text(&*history_buffer_ref);
+            result_buffer.set_text(&history_buffer_ref);
             history_borrow.set_buffer(Some(&result_buffer));
 
             input.set_placeholder_text(Some(&("Result: ".to_string() + &calc.result.to_string())));
@@ -698,7 +698,7 @@ pub fn run_gui() {
             .connect_activate(move |variable_input| {
                 let mut calc = calc_vars.borrow_mut();
                 let command = variable_input.text();
-                let mut tokens = command.split(" ");
+                let mut tokens = command.split(' ');
                 match tokens.next().unwrap() {
                     "add" => {
                         let key = tokens.next();
