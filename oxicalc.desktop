@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=OxiCalc
+GenericName=Calculator
+GenericName[de]=Rechner
+Exec=oxicalc
+Terminal=false
+Type=Application
+Keywords=calculator;settings;gtk;
+Icon=oxicalc
+Categories=Utility;GTK;
+StartupNotify=false
