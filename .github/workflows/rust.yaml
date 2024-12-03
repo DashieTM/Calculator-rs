@@ -1,0 +1,33 @@
+# inspired by https://github.com/danth/stylix/blob/master/.github/workflows/docs.yml
+name: Rust-build
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+jobs:
+  build:
+    name: Build
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          extra-conf: |
+            extra-experimental-features = nix-command flakes
+      - name: Set up cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: action
+        uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: cache
+        uses: cachix/cachix-action@v14
+        with:
+          name: oxicalc
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - name: Build
+        run: nix -L build github:${{ github.repository }}/${{ github.sha }} --no-write-lock-file
